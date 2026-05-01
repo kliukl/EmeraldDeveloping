@@ -6,7 +6,7 @@ using PkgUtility.UniversalConstants: CP_D_MOL, K_STEFAN, M_H₂O
 using ..Namespace: AbstractSoilVC
 using ..Namespace: AbstractXylemVC
 using ..Namespace: BetaFunction, BetaParameterG1, BetaParameterKleaf, BetaParameterKsoil, BetaParameterPleaf, BetaParameterPsoil, BetaParameterVcmax, BetaParameterΘ
-using ..Namespace: AbstractStomatalConductanceModel, AndereggSM, BallBerrySM, EllerSM, GentineSM, LeuningSM, MedlynSM, SperrySM, WangSM, Wang2SM
+using ..Namespace: AbstractStomatalConductanceModel, AndereggSM, BallBerrySM, EllerSM, GentineSM, LeuningSM, MedlynSM, SperrySM, Sperry2SM, WangSM, Wang2SM
 using ..Namespace: Leaf, Root
 using ..Namespace: AirLayer, SoilLayer
 using ..Namespace: BulkSPAC, SPACCache, SPACConfig
@@ -35,6 +35,7 @@ include("optimality/dedp.jl");
 include("optimality/anderegg.jl");
 include("optimality/eller.jl");
 include("optimality/sperry.jl");
+include("optimality/sperry2.jl");
 include("optimality/wang.jl");
 include("optimality/wang2.jl");
 

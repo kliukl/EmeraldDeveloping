@@ -1,16 +1,22 @@
 """
 
+    steady_state_gs!(config::SPACConfig{FT}, leaf::Leaf{FT}, air::AirLayer{FT}; timer::Number = 50000) where {FT}
     steady_state_gs!(config::SPACConfig{FT}, cache::SPACCache{FT}, leaf::Leaf{FT}, air::AirLayer{FT}; timer::Number = 50000) where {FT}
 
 Compute the steady-state stomatal conductance for a leaf, given
 - `config` `SPACConfig` struct
-- `cache` `SPACCache` struct
 - `leaf` `Leaf` struct
 - `air` `AirLayer` struct
 - `timer` Maximum time allowed for reaching steady state `[s]`
+- `cache` `SPACCache` struct (optional, can be generated from `config`)
 
 """
-function steady_state_gs!(config::SPACConfig{FT}, cache::SPACCache{FT}, leaf::Leaf{FT}, air::AirLayer{FT}; timer::Number = 50000) where {FT}
+function steady_state_gs! end;
+
+steady_state_gs!(config::SPACConfig{FT}, leaf::Leaf{FT}, air::AirLayer{FT}; timer::Number = 50000) where {FT} =
+    steady_state_gs!(config, leaf_level_spac_cache(config), leaf, air; timer = timer);
+
+steady_state_gs!(config::SPACConfig{FT}, cache::SPACCache{FT}, leaf::Leaf{FT}, air::AirLayer{FT}; timer::Number = 50000) where {FT} = (
     @assert config.DIMENSIONS.DIM_PPAR_BINS == 0 "steady_state_gs! only supports leaf-level simulations (DIM_PPAR_BINS == 0)";
 
     δt_remain::FT = timer;
@@ -28,23 +34,20 @@ function steady_state_gs!(config::SPACConfig{FT}, cache::SPACCache{FT}, leaf::Le
         leaf_photosynthesis!(config, cache, leaf, air);
         ∂g∂t!(config, cache, leaf, air);
 
-        # @info "debugging" leaf.flux.state.g_H₂O_s[1] leaf.flux.auxil.∂g∂t[1] leaf.flux.auxil.∂A∂E[1] leaf.flux.auxil.∂Θ∂E[1] δt_remain;
-        # sleep(0.1);
-
         if abs(leaf.flux.auxil.∂g∂t[1]) <= 1e-7
             break
         end;
 
         # adjust time step based on capacitance buffer and stomatal conductance change rate
         δt = dynamic_timer(leaf, δt_remain);
-        stomatal_conductance!(leaf, δt)
+        stomatal_conductance!(leaf, δt);
         leaf_water_budget!(leaf, leaf.xylem.auxil, δt);
         substep_aux!(leaf, false);
         δt_remain -= δt;
     end;
 
     return nothing
-end;
+);
 
 
 """
@@ -74,6 +77,7 @@ function dynamic_timer(leaf::Leaf{FT}, δt::FT) where {FT}
     # make sure each leaf stomatal conductances do not change more than 0.001 mol m⁻² s⁻¹
     for ∂g∂t in leaf.flux.auxil.∂g∂t
         new_δt = min(FT(0.001) / abs(∂g∂t), new_δt);
+        # @show ∂g∂t,new_δt;
         if isnan(new_δt)
             @error "NaN or very small δt detected when adjusting δt based on leaf stomatal conductance dYdt" ∂g∂t;
             return error("NaN detected in dynamic_timer")

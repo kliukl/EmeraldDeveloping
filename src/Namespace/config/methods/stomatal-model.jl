@@ -7,6 +7,7 @@ Hierarchy of AbstractStomatalConductanceModel:
 - LeuningSM
 - MedlynSM
 - SperrySM
+- Sperry2SM
 - WangSM
 - Wang2SM
 
@@ -139,6 +140,20 @@ end;
 
 
 """
+Empty struct for Sperry2 stomatal model. The equation used for Sperry2 type model is
+```math
+\\dfrac{∂Θ}{∂E} = -\\dfrac{∂K}{∂E} ⋅ \\dfrac{A}{K_{max}}
+```
+where K is ``\\dfrac{∂E}{∂P}``.
+"""
+Base.@kwdef mutable struct Sperry2SM{FT<:AbstractFloat} <: AbstractStomatalConductanceModel{FT}
+    # General model information
+    "Slope constant `[mol² m⁻² s⁻¹ μmol⁻¹]`"
+    K::FT = 1e-7
+end;
+
+
+"""
 Empty struct for Wang stomatal model. The equation used for Wang type model is
 ```math
 \\dfrac{∂Θ}{∂E} = \\dfrac{A}{E_{crit} - E}
@@ -178,6 +193,7 @@ UnionStomatalConductanceModel{FT<:AbstractFloat} = Union{
     LeuningSM{FT},
     MedlynSM{FT},
     SperrySM{FT},
+    Sperry2SM{FT},
     WangSM{FT},
     Wang2SM{FT}
 }

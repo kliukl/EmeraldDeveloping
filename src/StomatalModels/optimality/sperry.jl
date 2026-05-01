@@ -1,16 +1,3 @@
-# This file contains functions to compute the ∂Θ∂E for the SperrySM
-
-#######################################################################################################################################################################################################
-#
-# Changes to this method
-# General
-#     2023-Oct-16: make sure maximum gsc does not exceed g_CO₂_b
-#     2024-Oct-16: make sure gsm is positive
-#     2024-Oct-30: add leaf connection check
-# Bug fixes
-#     2025-Nov-19: set min A to 0.01 when computing ∂Θ∂E
-#
-#######################################################################################################################################################################################################
 ∂Θ∂E!(config::SPACConfig{FT}, cache::SPACCache{FT}, sm::SperrySM{FT}, leaf::Leaf{FT}, air::AirLayer{FT}) where {FT} = (
     # if leaf xylem is not connected, do nothing
     if !leaf.xylem.state.connected
@@ -21,7 +8,7 @@
 
     # compute the ∂Θ∂E when leaf xylem is connected
     e = flow_out(leaf);
-    δe = e / 100;
+    δe = max(min(e / 100, FT(1e-6)), FT(1e-7));
     dedp1 = ∂E∂P(leaf, e; δe = δe);
     dedp2 = ∂E∂P(leaf, e; δe = -δe);
     dedpm = ∂E∂P(leaf, FT(0); δe = δe);

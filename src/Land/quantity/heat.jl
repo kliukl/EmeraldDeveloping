@@ -149,6 +149,25 @@ SENSIBLE_HEAT(spac::BulkSPAC{FT}) where {FT} = (
 
 """
 
+    SHORTWAVE_IN(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT}
+
+Return the incoming shortwave radiation per ground area, given
+- `config` `SPACConfig` configuration
+- `spac` `BulkSPAC` SPAC
+
+"""
+function SHORTWAVE_IN end;
+
+SHORTWAVE_IN(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT} = (
+    dwl = config.CONSTANTS.SPECTRA.ΔΛ;
+    sw_in = spac.meteo.rad_sw.e_dir .+ spac.meteo.rad_sw.e_dif;
+
+    return (sw_in' * dwl) / 1000
+);
+
+
+"""
+
     SHORTWAVE_OUT(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT}
 
 Return the outgoing shortwave radiation per ground area, given
@@ -163,25 +182,4 @@ SHORTWAVE_OUT(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT} = (
     sw_out = spac.canopy.sun_geometry.auxil.e_difꜛ[:,1];
 
     return (sw_out' * dwl) / 1000
-);
-
-
-"""
-
-    T_SKIN(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT}
-    T_SKIN(spac::BulkSPAC{FT}) where {FT}
-
-Return the skin temperature, given
-- `config` `SPACConfig` configuration
-- `spac` `BulkSPAC` SPAC
-
-"""
-function T_SKIN end;
-
-T_SKIN(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT} = T_SKIN(spac);
-
-T_SKIN(spac::BulkSPAC{FT}) where {FT} = (
-    lw_out = LONGWAVE_OUT(spac);
-
-    return FT( (lw_out / FT(0.98) / K_STEFAN()) ^ (1/4) )
 );
