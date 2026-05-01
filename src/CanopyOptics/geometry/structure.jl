@@ -232,7 +232,7 @@ function canopy_structure!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT
 
         can_str.auxil.τ_lw[i] = can_str.auxil.τ_lw_layer[i] / denom;                                                                            # it, rescale
         can_str.auxil.ρ_lw[i] = can_str.auxil.ρ_lw_layer[i] + can_str.auxil.τ_lw_layer[i] * can_str.auxil.ρ_lw[i+1] * can_str.auxil.τ_lw[i];    # ir + it-jr-it
->>>>>>> upstream/wyujie
+        
     end;
 
     return nothing

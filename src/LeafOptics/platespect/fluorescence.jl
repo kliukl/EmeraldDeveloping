@@ -245,12 +245,16 @@ leaf_sif_matrices!(config::SPACConfig{FT}, bio::LeafBio{FT}, cache::SPACCache{FT
         ϕ .= view(Φ_PS, IΛ_SIF);
 
         # tune SIF emission PDF based on the SIF excitation wavelength
-        expsife = exp(Λ_SIFE[ii] / 10);
-        @. factor = 1 / (1 + exp(-Λ_SIF / 10) * expsife);
-        ϕ .*= factor;
+        if config.FEATURES.ENABLE_LEAF_SIF_SIGMOID
+            expsife = exp(Λ_SIFE[ii] / 10);
+            @. factor = 1 / (1 + exp(-Λ_SIF / 10) * expsife);
+            ϕ .*= factor;
+        end;
 
         # rescale ϕ
-        ϕ ./= ΔΛ_SIF' * ϕ;
+        if config.FEATURES.ENABLE_LEAF_SIF_RESCALE
+            ϕ ./= ΔΛ_SIF' * ϕ;
+        end;
 
         # read in the values from the auxiliary variables
         vec_b_1     = view(bio.auxil.mat_b_1, :, i);

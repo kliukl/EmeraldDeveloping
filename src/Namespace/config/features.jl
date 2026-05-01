@@ -24,6 +24,14 @@ Base.@kwdef mutable struct SPACFeatures{FT<:AbstractFloat}
     ENABLE_REF::Bool = true
     "Whether to compute fluorescence"
     ENABLE_SIF::Bool = true
+    "Apply sigmoid cutoff to leaf-level SIF emission PDF based on excitation wavelength"
+    ENABLE_LEAF_SIF_SIGMOID::Bool = true
+    "Rescale leaf-level SIF emission PDF to integrate to 1 after sigmoid cutoff"
+    ENABLE_LEAF_SIF_RESCALE::Bool = true
+    "Apply sigmoid cutoff to chloroplast-level SIF emission PDF based on excitation wavelength"
+    ENABLE_CHL_SIF_SIGMOID::Bool = true
+    "Rescale chloroplast-level SIF emission PDF to integrate to 1 after sigmoid cutoff"
+    ENABLE_CHL_SIF_RESCALE::Bool = true
     "Fix the TD of η for Johnson-Berry model"
     FIX_ETA_TD::Bool = true
     "Threshold of the critical pressure or flow that trigger root disconnection"

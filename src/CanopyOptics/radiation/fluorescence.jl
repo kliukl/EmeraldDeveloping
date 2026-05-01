@@ -107,8 +107,30 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         energy_to_photon!(SPECTRA.Λ_SIFE, sun_geo.auxil._e_dir_sife);
 
         # convert the excitation radiation to fluorescence components
-        sun_geo.auxil._e_dif_sif .= view(SPECTRA.Φ_PS,SPECTRA.IΛ_SIF) .* sum(sun_geo.auxil._e_dif_sife);
-        sun_geo.auxil._e_dir_sif .= view(SPECTRA.Φ_PS,SPECTRA.IΛ_SIF) .* sum(sun_geo.auxil._e_dir_sife);
+        if config.FEATURES.ENABLE_CHL_SIF_SIGMOID
+            _ϕ_sif = leaf.bio.auxil._ϕ_sif;
+            sun_geo.auxil._e_dif_sif .= 0;
+            sun_geo.auxil._e_dir_sif .= 0;
+            for i in eachindex(SPECTRA.IΛ_SIFE)
+                ii = SPECTRA.IΛ_SIFE[i];
+                expsife = exp(SPECTRA.Λ_SIFE[ii] / 10);
+                _ϕ_sif .= view(SPECTRA.Φ_PS, SPECTRA.IΛ_SIF);
+                @. _ϕ_sif /= 1 + exp(-SPECTRA.Λ_SIF / 10) * expsife;
+                if config.FEATURES.ENABLE_CHL_SIF_RESCALE
+                    _ϕ_sif ./= SPECTRA.ΔΛ_SIF' * _ϕ_sif;
+                end;
+                sun_geo.auxil._e_dif_sif .+= _ϕ_sif .* sun_geo.auxil._e_dif_sife[i];
+                sun_geo.auxil._e_dir_sif .+= _ϕ_sif .* sun_geo.auxil._e_dir_sife[i];
+            end;
+        else
+            _ϕ_sif = leaf.bio.auxil._ϕ_sif;
+            _ϕ_sif .= view(SPECTRA.Φ_PS, SPECTRA.IΛ_SIF);
+            if config.FEATURES.ENABLE_CHL_SIF_RESCALE
+                _ϕ_sif ./= SPECTRA.ΔΛ_SIF' * _ϕ_sif;
+            end;
+            sun_geo.auxil._e_dif_sif .= _ϕ_sif .* sum(sun_geo.auxil._e_dif_sife);
+            sun_geo.auxil._e_dir_sif .= _ϕ_sif .* sum(sun_geo.auxil._e_dir_sife);
+        end;
 
         # add up the excitation radiation from direct and diffuse radiation for sunlit and shaded leaves
         sun_geo.auxil._e_dif_shaded .= sun_geo.auxil._e_dif_sif .* (1 - sun_geo.auxil.p_sunlit[irt]);
