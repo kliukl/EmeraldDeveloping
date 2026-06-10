@@ -108,13 +108,19 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         energy_to_photon!(SPECTRA.Λ_SIFE, sun_geo.auxil._e_dif_sife);
         energy_to_photon!(SPECTRA.Λ_SIFE, sun_geo.auxil._e_dir_sife);
 
+        # sun_geo.auxil._e_dif_sif .= view(SPECTRA.Φ_PS,SPECTRA.IΛ_SIF) .* sum(sun_geo.auxil._e_dif_sife);
+        # sun_geo.auxil._e_dir_sif .= view(SPECTRA.Φ_PS,SPECTRA.IΛ_SIF) .* sum(sun_geo.auxil._e_dir_sife);
         # convert the excitation radiation to fluorescence components
         sun_geo.auxil._e_dif_sif .= 0;
         sun_geo.auxil._e_dir_sif .= 0;
         for isife in eachindex(SPECTRA.Λ_SIFE)
             phi_ps .= view(SPECTRA.Φ_PS,SPECTRA.IΛ_SIF);
-            phi_ps ./= (1 .+ exp.(-SPECTRA.Λ_SIF / 10) .* exp(SPECTRA.Λ_SIFE[isife] / 10));
-            phi_ps ./= (phi_ps' * SPECTRA.ΔΛ_SIF);
+            if config.FEATURES.ENABLE_CHL_SIF_SIGMOID
+                phi_ps ./= (1 .+ exp.(-SPECTRA.Λ_SIF / 10) .* exp(SPECTRA.Λ_SIFE[isife] / 10));
+            end;
+            if config.FEATURES.ENABLE_CHL_SIF_RESCALE
+                phi_ps ./= (phi_ps' * SPECTRA.ΔΛ_SIF);
+            end;
             sun_geo.auxil._e_dif_sif .+= phi_ps .* sun_geo.auxil._e_dif_sife[isife];
             sun_geo.auxil._e_dir_sif .+= phi_ps .* sun_geo.auxil._e_dir_sife[isife];
         end;
@@ -270,7 +276,7 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
     for i in n_layer:-1:1
         r__ = view(can_str.auxil.ρ_dd_layer,SPECTRA.IΛ_SIF,i  );    # reflectance without correction
         r_j = view(can_str.auxil.ρ_dd      ,SPECTRA.IΛ_SIF,i+1);    # reflectance of the lower boundary (i) for SIF
-        t_i = view(can_str.auxil.τ_dd      ,SPECTRA.IΛ_SIF,i  );    # transmittance of the layer (i) for SIF
+        t_i = view(can_str.auxil.τ_dd_layer,SPECTRA.IΛ_SIF,i  );    # transmittance of the layer (i) for SIF
 
         f_d_i = view(sun_geo.auxil.e_sifꜜ_layer    ,:,i  );            # downward emitted SIF from layer i
         f_u_i = view(sun_geo.auxil.e_sifꜛ_layer    ,:,i  );            # upward emitted SIF from layer i
