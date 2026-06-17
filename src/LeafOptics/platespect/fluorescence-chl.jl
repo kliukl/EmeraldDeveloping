@@ -7,6 +7,7 @@ Update the SIF conversion matrix of the leaf without reabsorption, given
 - `bio` leaf biophysics
 
 """
+
 function leaf_sif_matrices_chl! end;
 
 leaf_sif_matrices_chl!(config::SPACConfig{FT}, bio::LeafBio{FT}, cache::SPACCache{FT}) where {FT} = leaf_sif_matrices_chl!(config, bio, cache, config.METHODS.FLUORESCENCE_SPECTRA_METHOD);
@@ -33,20 +34,9 @@ leaf_sif_matrices_chl!(config::SPACConfig{FT}, bio::LeafBio{FT}, cache::SPACCach
         # rescale ϕ
         ϕ ./= ΔΛ_SIF' * ϕ;
 
-        # read in the values from the auxiliary variables
-        vec_b = view(bio.auxil.mat_b, :, i);
-        vec_f = view(bio.auxil.mat_f, :, i);
-        vec_b_chl = view(bio.auxil.mat_b_chl, :, i);
-        vec_f_chl = view(bio.auxil.mat_f_chl, :, i);
-
-        # compute the total absorbed radiation
-        vec_b_chl .= bio.auxil.α_leaf[ii] * bio.auxil.f_sife[ii] .* ϕ .* vec_b ./ (vec_b .+ vec_f);
-        vec_f_chl .= bio.auxil.α_leaf[ii] * bio.auxil.f_sife[ii] .* ϕ .* vec_f ./ (vec_b .+ vec_f);
+        # matꜛ_chl = α * f_sife * ϕ / 2 (mat_b_chl + mat_f_chl; b/f partition cancels in total chl SIF)
+        view(bio.auxil.matꜛ_chl, :, i) .= bio.auxil.α_leaf[ii] * bio.auxil.f_sife[ii] .* ϕ ./ 2;
     end;
-
-    # compute the mean and mean diff of mat_b_chl and mat_f_chl
-    bio.auxil.matꜛ_chl .= (bio.auxil.mat_b_chl .+ bio.auxil.mat_f_chl) ./ 2;
-    bio.auxil.matꜜ_chl .= (bio.auxil.mat_b_chl .- bio.auxil.mat_f_chl) ./ 2;
 
     return nothing
 );
