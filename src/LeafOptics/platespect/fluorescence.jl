@@ -199,7 +199,7 @@ end;
 #     2023-Sep-18: add an intermediate step to compute SIF out of each layer before rescaling it to the leaf level SIF
 #     2023-Sep-19: add option to cut off SIF emission to make sure its wavelength is within the range of the SIF excitation wavelengths
 #     2023-Sep-19: add option to rescale the SIF emission PDF because of the cut off
-#     2023-Oct-14: compute mat_mean and mat_diff
+#     2023-Oct-14: compute matꜛ and matꜜ
 #     2023-Oct-24: save the matrices for PSI and PSII as well as PS combined
 #     2024-Aug-13: add alternative function to compute SIF matrices using k_e and k_f analytically when N is nothing (integral method)
 #     2024-Aug-16: abstractize the function to allow for different methods of computing SIF matrices
@@ -299,9 +299,17 @@ leaf_sif_matrices!(config::SPACConfig{FT}, bio::LeafBio{FT}, cache::SPACCache{FT
         vec_f .*= ϕ;
     end;
 
+    # scale the matrix by α so as to compute the spectra from net radiation
+    bio.auxil.mat_b_α .= bio.auxil.mat_b ./ view(bio.auxil.α_leaf, SPECTRA.IΛ_SIFE)';
+    bio.auxil.mat_f_α .= bio.auxil.mat_f ./ view(bio.auxil.α_leaf, SPECTRA.IΛ_SIFE)';
+
     # compute the mean and mean diff of mat_b and mat_f
-    bio.auxil.mat_mean .= (bio.auxil.mat_b .+ bio.auxil.mat_f) ./ 2;
-    bio.auxil.mat_diff .= (bio.auxil.mat_b .- bio.auxil.mat_f) ./ 2;
+    bio.auxil.matꜛ .= (bio.auxil.mat_b .+ bio.auxil.mat_f) ./ 2;
+    bio.auxil.matꜜ .= (bio.auxil.mat_b .- bio.auxil.mat_f) ./ 2;
+    bio.auxil.matꜛ_α .= (bio.auxil.mat_b_α .+ bio.auxil.mat_f_α) ./ 2;
+    bio.auxil.matꜜ_α .= (bio.auxil.mat_b_α .- bio.auxil.mat_f_α) ./ 2;
+    # bio.auxil.matꜛ_α .= bio.auxil.mat_b_α;
+    # bio.auxil.matꜜ_α .= bio.auxil.mat_f_α;
 
     return nothing
 );

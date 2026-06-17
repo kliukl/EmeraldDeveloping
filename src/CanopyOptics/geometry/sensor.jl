@@ -125,7 +125,7 @@ sensor_geometry_aux!(
     for i in eachindex(Θ_INCL)
         f_ada = f_adaxial(senst.vza, Θ_INCL[i]);
         f_aba = 1 - f_ada;
-        f_inc = Θ_INCL[i] / 180;
+        f_inc = (1 - cosd(Θ_INCL[i])) / 2;
         sensa.w_dob_leaf += (f_ada * (1 - f_inc) + f_aba * f_inc) * cansa.p_incl_leaf[i] * sensa.ko_incl[i];
         sensa.w_dof_leaf += (f_ada * f_inc + f_aba * (1 - f_inc)) * cansa.p_incl_leaf[i] * sensa.ko_incl[i];
         sensa.w_dob_stem += (f_ada * (1 - f_inc) + f_aba * f_inc) * cansa.p_incl_stem[i] * sensa.ko_incl[i];
@@ -144,7 +144,7 @@ sensor_geometry_aux!(
     @. sensa.fo /= cosd(senst.vza);
     @. sensa.fo_abs = abs(sensa.fo);
     for i in eachindex(Θ_INCL)
-        @. sensa.fo_cos²_incl[i,:] = (@view sensa.fo[i,:]) * cosd(Θ_INCL[i]) ^ 2; # TODO: is this related to the bf calculation in SCOPE?
+        @. sensa.fo_cos_incl[i,:] = (@view sensa.fo[i,:]) * cosd(Θ_INCL[i]); # TODO: is this related to the bf calculation in SCOPE?
     end;
     @. sensa.fo_fs = sunsa.fs * sensa.fo;
     @. sensa.fo_fs_abs = abs(sensa.fo_fs);
@@ -271,7 +271,7 @@ sensor_geometry_aux!(
     @. sensa.fo /= cosd(senst.vza);
     @. sensa.fo_abs = abs(sensa.fo);
     for i in eachindex(Θ_INCL)
-        @. sensa.fo_cos²_incl[i,:] = (@view sensa.fo[i,:]) * cosd(Θ_INCL[i]) ^ 2; # TODO: is this related to the bf calculation in SCOPE?
+        @. sensa.fo_cos_incl[i,:] = (@view sensa.fo[i,:]) * cosd(Θ_INCL[i]); # TODO: is this related to the bf calculation in SCOPE?
     end;
     @. sensa.fo_fs = sunsa.fs * sensa.fo;
     @. sensa.fo_fs_abs = abs(sensa.fo_fs);
