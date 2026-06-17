@@ -175,6 +175,9 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         sun_geo.auxil._e_difꜛ_sife .= view(sun_geo.auxil.e_difꜛ,SPECTRA.IΛ_SIFE,irt+1) .* f_leaf .* SPECTRA.ΔΛ_SIFE;
 
         # need to rescale the excitation radiation to account for the extiction coefficients due to leaf angles
+        # why SCOPE does not use this: SCOPE APAR, E_sun * α_leaf * fs projection (the sum may not be equal to absorption of E_sun in this layer);
+        # Emerald use E_sun * layer absorption * normalization fs projection (conserves energy);
+        # so Emerald need to rescale the excitation radiation to be consistent with its APAR algorithm (chl -> leaf escaping)
         t_ss = view(sun_geo.auxil.τ_ss_layer, irt);
         r_sd = view(sun_geo.auxil.ρ_sd_layer,SPECTRA.IΛ_SIFE,irt);
         t_sd = view(sun_geo.auxil.τ_sd_layer,SPECTRA.IΛ_SIFE,irt);
@@ -269,7 +272,7 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         sun_geo.auxil.e_sifꜛ_layer[:,irt] .= sun_geo.auxil._sif_sunlitꜛ_dir .+
                                              sun_geo.auxil._sif_sunlitꜛ_dif .* sun_geo.auxil.p_sunlit[irt] .+
                                              sun_geo.auxil._sif_shadedꜛ     .* (1 - sun_geo.auxil.p_sunlit[irt]);
-    end;
+   end;
 
     # 2. account for the SIF emission from bottom to up
     sun_geo.auxil.e_sifꜛ_emit[:,end] .= 0;
