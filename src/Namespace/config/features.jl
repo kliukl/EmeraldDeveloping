@@ -32,6 +32,8 @@ Base.@kwdef mutable struct SPACFeatures{FT<:AbstractFloat}
     ENABLE_CHL_SIF_SIGMOID::Bool = true
     "Rescale chloroplast-level SIF emission PDF to integrate to 1 after sigmoid cutoff"
     ENABLE_CHL_SIF_RESCALE::Bool = true
+    "Whether to clamp p_sun_sensor (Pso) to min(Pso, Po, Ps); set false to match 4SAIL (allow non-physical overshoot)"
+    ENFORCE_PSO_CLAMP::Bool = true
     "Fix the TD of η for Johnson-Berry model"
     FIX_ETA_TD::Bool = true
     "Threshold of the critical pressure or flow that trigger root disconnection"

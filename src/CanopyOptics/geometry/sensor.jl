@@ -160,17 +160,19 @@ sensor_geometry_aux!(
 
     # TODO: the pso function could lead to pso > ps or pso > po, redo the calculation without using the min function
     # compute the fraction of sunlit leaves that can be viewed from the sensor direction (for hot spot)
-    # equations from Appendix C of the mSCOPE paper (Yang et al., 2018)
+    # mSCOPE-style pso kernel; sl matches 4SAIL/SCOPE (alf = ag/sl = dso/q * 2/(ks+ko))
     pai = canst.lai + canst.sai;
     ag = sqrt( tand(sunst.sza) ^ 2 + tand(senst.vza) ^ 2 - 2 * tand(sunst.sza) * tand(senst.vza) * cosd(senst.vaa - sunst.saa) );
     Σk = (sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai + sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai);
     Πk = sqrt((sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai) * (sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai));
-    sl = lw2ch / 2 * pai / Σk;
+    sl = lw2ch / 2 * Σk / pai;
     pso(x) = ag == 0 ? sensa.ci_sensor * exp(Σk * x - Πk * x) : sensa.ci_sensor * exp(Σk * x + Πk * sl / ag * (1 - exp(ag / sl * x)));
 
     for i in eachindex(canst.δlai)
         sensa.p_sun_sensor[i] = quadgk(pso, cansa.x_bnds[i+1], cansa.x_bnds[i]; rtol = 1e-4)[1] / (cansa.x_bnds[i] - cansa.x_bnds[i+1]);
-        sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i]);
+        if config.FEATURES.ENFORCE_PSO_CLAMP
+            sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i]);
+        end;
     end;
 
     return nothing
@@ -287,17 +289,19 @@ sensor_geometry_aux!(
 
     # TODO: the pso function could lead to pso > ps or pso > po, redo the calculation without using the min function
     # compute the fraction of sunlit leaves that can be viewed from the sensor direction (for hot spot)
-    # equations from Appendix C of the mSCOPE paper (Yang et al., 2018)
+    # mSCOPE-style pso kernel; sl matches 4SAIL/SCOPE (alf = ag/sl = dso/q * 2/(ks+ko))
     pai = canst.lai + canst.sai;
     ag = sqrt( tand(sunst.sza) ^ 2 + tand(senst.vza) ^ 2 - 2 * tand(sunst.sza) * tand(senst.vza) * cosd(senst.vaa - sunst.saa) );
     Σk = (sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai + sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai);
     Πk = sqrt((sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai) * (sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai));
-    sl = lw2ch / 2 * pai / Σk;
+    sl = lw2ch / 2 * Σk / pai;
     pso(x) = ag == 0 ? sensa.ci_sensor * exp(Σk * x - Πk * x) : sensa.ci_sensor * exp(Σk * x + Πk * sl / ag * (1 - exp(ag / sl * x)));
 
     for i in eachindex(canst.δlai)
         sensa.p_sun_sensor[i] = quadgk(pso, cansa.x_bnds[i+1], cansa.x_bnds[i]; rtol = 1e-4)[1] / (cansa.x_bnds[i] - cansa.x_bnds[i+1]);
-        sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i]);
+        if config.FEATURES.ENFORCE_PSO_CLAMP
+            sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i]);
+        end;
     end;
 
     return nothing
