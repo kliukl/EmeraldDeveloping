@@ -39,6 +39,8 @@ DEFAULT_SAVING_SETTINGS = ParameterFunctionMapper[
     ParameterFunctionMapper("ΣSIF", false, ΣSIF, []),
     ParameterFunctionMapper("ΣSIF_CHL", false, ΣSIF_CHL, []),
     ParameterFunctionMapper("ΣSIF_LEAF", false, ΣSIF_LEAF, []),
+    # NOTE: per-wavelength SIF (SIF_TOC_HEM / SIF_CHL_HEM / SIF_LEAF_HEM / SIF_OBS at wl) is NOT registered
+    # here — those are wavelength-parameterized and added dynamically by the pipeline from SIF_WV_SAVE.
 
     ParameterFunctionMapper("ΦD", false, ΦD, []),
     ParameterFunctionMapper("ΦF", false, ΦF, []),

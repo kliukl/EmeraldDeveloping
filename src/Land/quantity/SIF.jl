@@ -220,3 +220,137 @@ function ΣSIF_LEAF end;
 
     return Σsif
 );
+
+
+#######################################################################################################################################################################################################
+# Per-wavelength SIF diagnostics. Wavelength `wl` (nm) is passed as an extra ParameterFunctionMapper param.
+#
+# HEMISPHERIC set (sun_geometry.auxil.e_sif*): upward SIF flux per ground area, W m⁻² nm⁻¹. Single-wavelength
+# counterparts of the spectrally integrated ΣSIF / ΣSIF_CHL / ΣSIF_LEAF above (ports of old Emerald.jl
+# SIF_SUN_740 / SIF_CHL_SUN_740 / SIF_LEAF_SUN_740, renamed _SUN_→_HEM_; TOC = top-of-canopy).
+#
+# NADIR set (sensor_geometry.auxil.sif_obs*): observed directional radiance in the viewing direction,
+# W m⁻² sr⁻¹ nm⁻¹. SIF_OBS is the total (generic form of TROPOMI_SIF740); the *_SUNLIT/SHADED/SCATTERED/SOIL
+# components decompose it by scattering source and sum to SIF_OBS.
+#######################################################################################################################################################################################################
+"""
+
+    SIF_TOC_HEM(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+
+Return the hemispheric upward SIF at `wl` nm at the top of the canopy after reabsorption, in W m⁻² nm⁻¹ per
+ground area (per-wavelength counterpart of `ΣSIF`), given
+- `config` `SPACConfig` SPAC configuration
+- `spac` `BulkSPAC` SPAC
+- `wl` wavelength in nm
+
+"""
+function SIF_TOC_HEM end;
+
+SIF_TOC_HEM(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} = (
+    (; SPECTRA) = config.CONSTANTS;
+    sun_geo = spac.canopy.sun_geometry;
+
+    return interpolate_data(SPECTRA.Λ_SIF, sun_geo.auxil.e_sifꜛ[:,1], FT(wl))
+);
+
+
+"""
+
+    SIF_CHL_HEM(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+
+Return the hemispheric SIF at `wl` nm at chloroplast level (without any reabsorption), in W m⁻² nm⁻¹ per
+ground area (per-wavelength counterpart of `ΣSIF_CHL`), given
+- `config` `SPACConfig` SPAC configuration
+- `spac` `BulkSPAC` SPAC
+- `wl` wavelength in nm
+
+"""
+function SIF_CHL_HEM end;
+
+SIF_CHL_HEM(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} = (
+    (; SPECTRA) = config.CONSTANTS;
+    canopy = spac.canopy;
+    leaves = spac.plant.leaves;
+
+    Σsif_wl::FT = 0;
+    for i in eachindex(leaves)
+        Σsif_wl += interpolate_data(SPECTRA.Λ_SIF, canopy.sun_geometry.auxil.e_sif_chl[:,i], FT(wl));
+    end;
+
+    return Σsif_wl
+);
+
+
+"""
+
+    SIF_LEAF_HEM(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+
+Return the hemispheric SIF at `wl` nm at leaf level after reabsorption (upward + downward), in W m⁻² nm⁻¹ per
+ground area (per-wavelength counterpart of `ΣSIF_LEAF`), given
+- `config` `SPACConfig` SPAC configuration
+- `spac` `BulkSPAC` SPAC
+- `wl` wavelength in nm
+
+"""
+function SIF_LEAF_HEM end;
+
+SIF_LEAF_HEM(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} = (
+    (; SPECTRA) = config.CONSTANTS;
+    canopy = spac.canopy;
+    leaves = spac.plant.leaves;
+
+    Σsif_wl::FT = 0;
+    for i in eachindex(leaves)
+        Σsif_wl += interpolate_data(SPECTRA.Λ_SIF, canopy.sun_geometry.auxil.e_sifꜛ_layer[:,i], FT(wl));
+        Σsif_wl += interpolate_data(SPECTRA.Λ_SIF, canopy.sun_geometry.auxil.e_sifꜜ_layer[:,i], FT(wl));
+    end;
+
+    return Σsif_wl
+);
+
+
+"""
+
+    SIF_OBS(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+
+Return the total nadir (viewing-direction) observed SIF at `wl` nm, in W m⁻² sr⁻¹ nm⁻¹ (generic form of
+`TROPOMI_SIF740`), given
+- `config` `SPACConfig` SPAC configuration
+- `spac` `BulkSPAC` SPAC
+- `wl` wavelength in nm
+
+"""
+function SIF_OBS end;
+
+SIF_OBS(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} =
+    interpolate_data(config.CONSTANTS.SPECTRA.Λ_SIF, spac.canopy.sensor_geometry.auxil.sif_obs, FT(wl));
+
+
+"""
+
+    SIF_OBS_SUNLIT(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+    SIF_OBS_SHADED(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+    SIF_OBS_SCATTERED(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+    SIF_OBS_SOIL(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT}
+
+Source decomposition of the nadir observed SIF at `wl` nm (W m⁻² sr⁻¹ nm⁻¹): sunlit-leaf, shaded-leaf,
+multiply-scattered, and soil-reflected contributions. They sum to `SIF_OBS`. Available for saving but not
+enabled by default (to bound the number of combined variables).
+
+"""
+function SIF_OBS_SUNLIT end;
+function SIF_OBS_SHADED end;
+function SIF_OBS_SCATTERED end;
+function SIF_OBS_SOIL end;
+
+SIF_OBS_SUNLIT(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} =
+    interpolate_data(config.CONSTANTS.SPECTRA.Λ_SIF, spac.canopy.sensor_geometry.auxil.sif_obs_sunlit, FT(wl));
+
+SIF_OBS_SHADED(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} =
+    interpolate_data(config.CONSTANTS.SPECTRA.Λ_SIF, spac.canopy.sensor_geometry.auxil.sif_obs_shaded, FT(wl));
+
+SIF_OBS_SCATTERED(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} =
+    interpolate_data(config.CONSTANTS.SPECTRA.Λ_SIF, spac.canopy.sensor_geometry.auxil.sif_obs_scattered, FT(wl));
+
+SIF_OBS_SOIL(config::SPACConfig{FT}, spac::BulkSPAC{FT}, wl::Number) where {FT} =
+    interpolate_data(config.CONSTANTS.SPECTRA.Λ_SIF, spac.canopy.sensor_geometry.auxil.sif_obs_soil, FT(wl));

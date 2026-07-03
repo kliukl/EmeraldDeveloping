@@ -10,7 +10,7 @@ using PkgUtility.PhysicalChemistry: saturation_vapor_pressure
 using PkgUtility.PrettyDisplay: pretty_display!
 using PkgUtility.UniversalConstants: M_H₂O, K_STEFAN, T₀, ρ_H₂O, energy_to_photon
 using ProgressMeter: @showprogress
-using Statistics: mean
+using Statistics: mean, quantile
 
 using ..Namespace
 using ..Namespace: BulkSPAC, MultiLayerCanopy, ReferenceSpectra, ShortwaveRadiation, SPACConfig
@@ -33,6 +33,8 @@ include("quantity/yield.jl");
 include("setting/saving.jl");
 include("setting/setting.jl");
 
+include("simulation/0-sai.jl");
+include("simulation/0-stem.jl");
 include("simulation/1-config.jl");
 include("simulation/2-spac.jl");
 include("simulation/3-driver.jl");

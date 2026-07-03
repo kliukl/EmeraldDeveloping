@@ -22,6 +22,8 @@ Base.@kwdef mutable struct SPACFeatures{FT<:AbstractFloat}
     ENABLE_DROUGHT_LEGACY::Bool = false
     "Whether to compute canopy reflectance"
     ENABLE_REF::Bool = true
+    "Whether to prescribe a non-zero stem area index (SAI) per pixel; if false, SAI stays 0 everywhere"
+    ENABLE_SAI::Bool = true
     "Whether to compute fluorescence"
     ENABLE_SIF::Bool = true
     "Apply sigmoid cutoff to leaf-level SIF emission PDF based on excitation wavelength"

@@ -14,6 +14,7 @@ function site_driver_tuple(gmd::Union{Dict,OrderedDict}, wd::Union{Dict{String,V
     wd["CI"     ] = resample(FT.(gmd["CLUMPING"   ]), "1H", gmd["YEAR"]);
     wd["JMAX25" ] = resample(FT.(gmd["JMAX25"     ]), "1H", gmd["YEAR"]);
     wd["LAI"    ] = resample(FT.(gmd["LAI"        ]), "1H", gmd["YEAR"]);
+    wd["SAI"    ] = resample(FT.(grid_sai(gmd)      ), "1H", gmd["YEAR"]);
     wd["VCMAX25"] = resample(FT.(gmd["VCMAX25"    ]), "1H", gmd["YEAR"]);
 
     # convert the DataFrame to NamedTuple

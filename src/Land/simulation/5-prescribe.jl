@@ -61,6 +61,16 @@ function prescribe!(config::SPACConfig{FT}, spac::BulkSPAC{FT}, driver::NamedTup
         prescribe_traits!(config, spac; ci = driver_cli);
     end;
 
+    # prescribe SAI only when enabled (driver.SAI is never read otherwise)
+    trigger_sai::Bool = false;
+    if config.FEATURES.ENABLE_SAI
+        driver_sai::FT = driver.SAI[ind];
+        trigger_sai = !isnan(driver_sai) && (driver_sai != spac.canopy.structure.trait.sai);
+        if trigger_sai
+            prescribe_traits!(config, spac; sai = driver_sai);
+        end;
+    end;
+
     # prescribe soil water contents and leaf temperature and initialize the spac (for first time step only)
     if initialize_state
         initialize_spac!(config, spac);
@@ -89,7 +99,7 @@ function prescribe!(config::SPACConfig{FT}, spac::BulkSPAC{FT}, driver::NamedTup
     spac.canopy.sun_geometry.state.sza = (driver_dir + driver_dif > 10) ? min(sza, 88) : sza;
 
     # run the t_aux! and dull_aux! functions if any of the LAI, CHL, or CI changes and initialize_state is false
-    if (trigger_chl || trigger_lai || trigger_cli) && !initialize_state
+    if (trigger_chl || trigger_lai || trigger_cli || trigger_sai) && !initialize_state
         t_aux!(config, spac.canopy, spac.cache);
         dull_aux!(config, spac);
     end;
