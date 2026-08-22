@@ -77,18 +77,18 @@ function ET_VEGE end;
 ET_VEGE(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT} = ET_VEGE(spac);
 
 ET_VEGE(spac::BulkSPAC{FT}) where {FT} = (
-    canopy = spac.canopy;
     leaves = spac.plant.leaves;
-    n_layer = length(leaves);
 
-    # compute transpiration rate
+    # transpiration per ground area. flow_out is already the TOTAL flow of the whole leaf area of a layer
+    # (flow_profile.jl: f = g*d/p_air * leaf.xylem.trait.area, and leaf.xylem.trait.area = δlai*ground_area),
+    # so it must be normalized by the ground area — NOT multiplied by δlai again. This mirrors LATENT_HEAT,
+    # which sums the per-leaf ∂e∂t_le (built from the same flow_out) and divides by soil_bulk.trait.area.
     tran::FT = 0;
-    for irt in 1:n_layer
-        ilf = n_layer + 1 - irt;
-        tran += flow_out(leaves[ilf]) * canopy.structure.trait.δlai[irt];
+    for leaf in leaves
+        tran += flow_out(leaf);
     end;
 
-    return tran
+    return tran / spac.soil_bulk.trait.area
 );
 
 
