@@ -154,7 +154,12 @@ sensor_geometry_aux!(
     kocipai = sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai;
     for i in eachindex(canst.δlai)
         kociipai = sensa.ko_leaf * canst.δlai[i] + sensa.ko_stem * canst.δsai[i];
-        sensa.p_sensor[i] = sensa.ci_sensor / kociipai * (exp(kocipai * cansa.x_bnds[i]) - exp(kocipai * cansa.x_bnds[i+1]));
+        # p_sensor is the layer-mean gap probability toward the observer — a pure path statistic
+        # (P_gap(0) = 1 by the Nilson definition of CI). Clumping enters ONCE, through the clumped
+        # ko/ks in the exponent; a ci prefactor here would double-count the within-clump area
+        # overlap already carried by ko_leaf in the scattering weights (hemispheric closure lost
+        # a factor ~ci under clumping; see CI algorithm correction, 2026-08).
+        sensa.p_sensor[i] = 1 / kociipai * (exp(kocipai * cansa.x_bnds[i]) - exp(kocipai * cansa.x_bnds[i+1]));
     end;
     sensa.p_sensor_soil = exp(-kocipai);
 
@@ -166,12 +171,18 @@ sensor_geometry_aux!(
     Σk = (sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai + sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai);
     Πk = sqrt((sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai) * (sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai));
     sl = lw2ch / 2 * Σk / pai;
-    pso(x) = ag == 0 ? sensa.ci_sensor * exp(Σk * x - Πk * x) : sensa.ci_sensor * exp(Σk * x + Πk * sl / ag * (1 - exp(ag / sl * x)));
+    # pso is the joint sun-and-view gap probability (Kuusk kernel); like p_sensor it is a pure
+    # path statistic with clumping only in Σk/Πk. The sunlit-fraction convention (p_sunlit =
+    # ci·gap) is applied where leaf identity matters (ϕ-pool split in fluorescence.jl), not here.
+    pso(x) = ag == 0 ? exp(Σk * x - Πk * x) : exp(Σk * x + Πk * sl / ag * (1 - exp(ag / sl * x)));
 
     for i in eachindex(canst.δlai)
         sensa.p_sun_sensor[i] = quadgk(pso, cansa.x_bnds[i+1], cansa.x_bnds[i]; rtol = 1e-4)[1] / (cansa.x_bnds[i] - cansa.x_bnds[i+1]);
         if config.FEATURES.ENFORCE_PSO_CLAMP
-            sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i]);
+            # bound pso by the sun GAP fraction (p_sunlit / ci_sun), not the sunlit fraction: pso and
+            # p_sensor are gap probabilities, and bounding a gap by the ci-scaled sunlit fraction
+            # would re-introduce the ci prefactor near the hotspot.
+            sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i] / sunsa.ci_sun);
         end;
     end;
 
@@ -283,7 +294,12 @@ sensor_geometry_aux!(
     kocipai = sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai;
     for i in eachindex(canst.δlai)
         kociipai = sensa.ko_leaf * canst.δlai[i] + sensa.ko_stem * canst.δsai[i];
-        sensa.p_sensor[i] = sensa.ci_sensor / kociipai * (exp(kocipai * cansa.x_bnds[i]) - exp(kocipai * cansa.x_bnds[i+1]));
+        # p_sensor is the layer-mean gap probability toward the observer — a pure path statistic
+        # (P_gap(0) = 1 by the Nilson definition of CI). Clumping enters ONCE, through the clumped
+        # ko/ks in the exponent; a ci prefactor here would double-count the within-clump area
+        # overlap already carried by ko_leaf in the scattering weights (hemispheric closure lost
+        # a factor ~ci under clumping; see CI algorithm correction, 2026-08).
+        sensa.p_sensor[i] = 1 / kociipai * (exp(kocipai * cansa.x_bnds[i]) - exp(kocipai * cansa.x_bnds[i+1]));
     end;
     sensa.p_sensor_soil = exp(-kocipai);
 
@@ -295,12 +311,18 @@ sensor_geometry_aux!(
     Σk = (sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai + sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai);
     Πk = sqrt((sunsa.ks_leaf * canst.lai + sunsa.ks_stem * canst.sai) * (sensa.ko_leaf * canst.lai + sensa.ko_stem * canst.sai));
     sl = lw2ch / 2 * Σk / pai;
-    pso(x) = ag == 0 ? sensa.ci_sensor * exp(Σk * x - Πk * x) : sensa.ci_sensor * exp(Σk * x + Πk * sl / ag * (1 - exp(ag / sl * x)));
+    # pso is the joint sun-and-view gap probability (Kuusk kernel); like p_sensor it is a pure
+    # path statistic with clumping only in Σk/Πk. The sunlit-fraction convention (p_sunlit =
+    # ci·gap) is applied where leaf identity matters (ϕ-pool split in fluorescence.jl), not here.
+    pso(x) = ag == 0 ? exp(Σk * x - Πk * x) : exp(Σk * x + Πk * sl / ag * (1 - exp(ag / sl * x)));
 
     for i in eachindex(canst.δlai)
         sensa.p_sun_sensor[i] = quadgk(pso, cansa.x_bnds[i+1], cansa.x_bnds[i]; rtol = 1e-4)[1] / (cansa.x_bnds[i] - cansa.x_bnds[i+1]);
         if config.FEATURES.ENFORCE_PSO_CLAMP
-            sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i]);
+            # bound pso by the sun GAP fraction (p_sunlit / ci_sun), not the sunlit fraction: pso and
+            # p_sensor are gap probabilities, and bounding a gap by the ci-scaled sunlit fraction
+            # would re-introduce the ci prefactor near the hotspot.
+            sensa.p_sun_sensor[i] = min(sensa.p_sun_sensor[i], sensa.p_sensor[i], sunsa.p_sunlit[i] / sunsa.ci_sun);
         end;
     end;
 
@@ -380,10 +402,19 @@ function sensor_geometry!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT}
         mask_effective ? τ_leaf_dir .= view(sun_geo.auxil.τ_leaf_eff,:,irt) : τ_leaf_dir .= leaf.bio.auxil.τ_leaf;
         @. sen_geo.auxil.dob_leaf[:,irt] = sen_geo.auxil.w_dob_leaf * ρ_leaf_dif + sen_geo.auxil.w_dof_leaf * τ_leaf_dif;
         @. sen_geo.auxil.dof_leaf[:,irt] = sen_geo.auxil.w_dof_leaf * ρ_leaf_dif + sen_geo.auxil.w_dob_leaf * τ_leaf_dif;
-        @. sen_geo.auxil.so_leaf[:,irt]  = sen_geo.auxil.w_sob_leaf * ρ_leaf_dir + sen_geo.auxil.w_sof_leaf * τ_leaf_dir;
+        # so contains the joint |fs·fo| projection per unit leaf area, which is UNCLUMPED geometry;
+        # the effective beam-intercepting area per unit LAI in a clumped canopy is ci·⟨|fs|⟩
+        # (Nilson), so the bidirectional coefficient carries the clumping index — the analogue of
+        # ko_leaf = ⟨ko⟩·ci_sensor for the diffuse→observer term. Without it, the beam→observer
+        # reflectance over-delivers by 1/ci once pso has no prefactor.
+        # TODO/discussion: ci_sun is used here (the clumped moment is the beam interception), but
+        # so is a joint sun–view quantity — whether it should carry ci_sun, ci_sensor, or a
+        # combination of both (e.g. through an angular-CI-consistent joint factor) should be
+        # revisited when the angular clumping (ci_1 ≠ 0) is enabled; for constant CI they coincide.
+        @. sen_geo.auxil.so_leaf[:,irt]  = sun_geo.auxil.ci_sun * (sen_geo.auxil.w_sob_leaf * ρ_leaf_dir + sen_geo.auxil.w_sof_leaf * τ_leaf_dir);
         @. sen_geo.auxil.dob_stem[:,irt] = sen_geo.auxil.w_dob_stem * SPECTRA.ρ_STEM;
         @. sen_geo.auxil.dof_stem[:,irt] = sen_geo.auxil.w_dof_stem * SPECTRA.ρ_STEM;
-        @. sen_geo.auxil.so_stem[:,irt]  = sen_geo.auxil.w_sob_stem * SPECTRA.ρ_STEM;
+        @. sen_geo.auxil.so_stem[:,irt]  = sun_geo.auxil.ci_sun * sen_geo.auxil.w_sob_stem * SPECTRA.ρ_STEM;
     end;
 
     return nothing

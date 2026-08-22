@@ -135,7 +135,12 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         sh_1_ = local_lidf_weight(ϕ_shaded, 1);
         sl_S_ = local_lidf_weight(ϕ_sunlit, sun_geo.auxil.fs_abs);
 
-        ilai_direct = (1 - sun_geo.auxil.τ_ss_layer[irt]) / sun_geo.auxil.ks_leaf;
+        # sunlit leaf area of the layer = (beam intercepted, clumped: 1−τ_ss) / (beam intercepted per unit
+        # leaf area: the UNCLUMPED ⟨|fs|⟩ = ks_leaf/ci_sun — a leaf's projection is its own geometry,
+        # clumping does not change it). Dividing by the clumped ks_leaf would cancel the CI and
+        # over-excite beam-driven SIF by 1/ci (excitation would exceed the intercepted beam).
+        # ≈ ci·δlai for thin layers, consistent with p_sunlit = ci·gap.
+        ilai_direct = (1 - sun_geo.auxil.τ_ss_layer[irt]) / (sun_geo.auxil.ks_leaf / sun_geo.auxil.ci_sun);
         ilai_diffuse = 1 - can_str.auxil.τ_dd_isotropic[irt];
         p_sun = sun_geo.auxil.p_sunlit[irt];
         e_dif_m = sun_geo.auxil._e_difꜜ_sifꜛ .+ sun_geo.auxil._e_difꜛ_sifꜛ;
@@ -219,7 +224,12 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         # TODO: better SIF scattering algorithm
         # ciilai = (1 - exp(-can_str.trait.δlai[irt])) * can_str.auxil.ci_diffuse;
         # ciilai = can_str.trait.δlai[irt] * can_str.auxil.ci_diffuse;
-        ilai_direct = (1 - sun_geo.auxil.τ_ss_layer[irt]) / sun_geo.auxil.ks_leaf;
+        # sunlit leaf area of the layer = (beam intercepted, clumped: 1−τ_ss) / (beam intercepted per unit
+        # leaf area: the UNCLUMPED ⟨|fs|⟩ = ks_leaf/ci_sun — a leaf's projection is its own geometry,
+        # clumping does not change it). Dividing by the clumped ks_leaf would cancel the CI and
+        # over-excite beam-driven SIF by 1/ci (excitation would exceed the intercepted beam).
+        # ≈ ci·δlai for thin layers, consistent with p_sunlit = ci·gap.
+        ilai_direct = (1 - sun_geo.auxil.τ_ss_layer[irt]) / (sun_geo.auxil.ks_leaf / sun_geo.auxil.ci_sun);
         ilai_diffuse = 1 - can_str.auxil.τ_dd_isotropic[irt];
         sun_geo.auxil.e_sifꜜ_layer[:,irt] .= sun_geo.auxil._sif_sunlitꜜ_dir .* ilai_direct .+
                                              sun_geo.auxil._sif_sunlitꜜ_dif .* sun_geo.auxil.p_sunlit[irt] .* ilai_diffuse .+
@@ -230,11 +240,33 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
 
         # update the SIF cache for the observer direction (compute it here to save time)
         f_direct = irt > 1 ? prod(view(sun_geo.auxil.τ_ss_layer, 1:(irt-1))) : 1;
-        sen_geo.auxil.sif_sunlit[:,irt] .= (sun_geo.auxil._e_dirꜜ_sifꜛ .* sl_SO .+ sun_geo.auxil._e_dirꜜ_sifꜜ .* sl_so) ./ f_direct .+  # SCOPE: wfEs
-                                           (sun_geo.auxil._e_difꜜ_sifꜛ .* sl_O_ .+ sun_geo.auxil._e_difꜜ_sifꜜ .* sl_oθ) .+              # SCOPE: vbEmin_u
-                                           (sun_geo.auxil._e_difꜛ_sifꜛ .* sl_O_ .- sun_geo.auxil._e_difꜛ_sifꜜ .* sl_oθ);                # SCOPE: vfEplu_u
-        sen_geo.auxil.sif_shaded[:,irt] .= (sun_geo.auxil._e_difꜜ_sifꜛ .* sh_O_ .+ sun_geo.auxil._e_difꜜ_sifꜜ .* sh_oθ) .+              # SCOPE: vbEmin_h
-                                           (sun_geo.auxil._e_difꜛ_sifꜛ .* sh_O_ .- sun_geo.auxil._e_difꜛ_sifꜜ .* sh_oθ);                # SCOPE: vfEplu_h
+        # beam-driven bracket is per unit SUNLIT leaf area (|fs·fo| projection, TOC-beam normalized by f_direct); under clumping the
+        # sunlit area is ci × the leaf area the beam reaches, and pso·δlai (prefactor-free) counts the latter → scale this bracket by ci_sun.
+        # The diffuse-driven brackets (below) are per unit leaf area and need no factor. (Parallel to so·ci_sun in reflection.)
+        ci_beam = sun_geo.auxil.ci_sun;
+        # Observer per-area sources use the SAME layer interception factors as the flux side, per unit leaf area:
+        #   diffuse-driven:  ilai_diffuse / δlai = (1 − τ_dd_isotropic)/δlai   (clumped diffuse interception incl. within-layer depletion)
+        #   beam-driven:     ilai_direct  / δlai = (1 − τ_ss)/(ks_unclumped·δlai)   (sunlit area per unit leaf area)
+        # so that flux-side emission and observer-side radiance source are the same intercepted-light quantity; only projection and
+        # visibility differ. (Legacy: no factor on the observer sources.)
+        # Nilson effective-area clumping on the observer per-area sources (thickness-independent, same convention as
+        # ko_leaf = ⟨ko⟩·ci and so·ci in the reflectance observer terms); depth effects stay in the gap probabilities.
+        f_int = can_str.auxil.ci_diffuse;
+        ci_pool_src = sun_geo.auxil.ci_sun;   # sunlit ϕ-pool share folded into the diffuse brackets (see comment below)
+        # sif_sunlit mixes two bases (kept in ONE vector to avoid a Namespace field; factors folded in at construction):
+        #   beam bracket  — per unit SUNLIT leaf area (|fs·fo| projection, TOC-beam normalized by f_direct); its sunlit-and-visible
+        #                   area is ci_sun × (beam reaches ∧ visible), so it carries ci_beam = ci_sun and is weighted by pso·δlai.
+        #   diffuse brackets — per unit LEAF area at the full diffuse field; they carry (a) f_int = ci_diffuse (Nilson effective-area
+        #                   clumping of the diffuse interception, cf. ko_leaf = ⟨ko⟩·ci) and (b) the sunlit ϕ-pool share, which is
+        #                   ci_sun·pso : p_sensor − ci_sun·pso (consistent with p_sunlit = ci·gap_s); since the SAME pso·δlai weight
+        #                   multiplies the whole vector in step 4, the extra pool factor ci_pool = ci_sun is folded in HERE.
+        # At ci = 1 all factors are 1 and this reduces exactly to the SCOPE form (wfEs + vbEmin_u + vfEplu_u).
+        sen_geo.auxil.sif_sunlit[:,irt] .= ci_beam .* (sun_geo.auxil._e_dirꜜ_sifꜛ .* sl_SO .+ sun_geo.auxil._e_dirꜜ_sifꜜ .* sl_so) ./ f_direct .+          # SCOPE: wfEs
+                                           f_int .* ci_pool_src .* ((sun_geo.auxil._e_difꜜ_sifꜛ .* sl_O_ .+ sun_geo.auxil._e_difꜜ_sifꜜ .* sl_oθ) .+       # SCOPE: vbEmin_u
+                                                                    (sun_geo.auxil._e_difꜛ_sifꜛ .* sl_O_ .- sun_geo.auxil._e_difꜛ_sifꜜ .* sl_oθ));         # SCOPE: vfEplu_u
+        # shaded leaves: diffuse-driven only, per unit leaf area; carries f_int; its ϕ-pool share (p_sensor − ci_sun·pso) is applied in step 4
+        sen_geo.auxil.sif_shaded[:,irt]     .= f_int .* ((sun_geo.auxil._e_difꜜ_sifꜛ .* sh_O_ .+ sun_geo.auxil._e_difꜜ_sifꜜ .* sh_oθ) .+                   # SCOPE: vbEmin_h
+                                                         (sun_geo.auxil._e_difꜛ_sifꜛ .* sh_O_ .- sun_geo.auxil._e_difꜛ_sifꜜ .* sh_oθ));                    # SCOPE: vfEplu_h
     end;
 
     # 2. account for the SIF emission from bottom to up
@@ -278,10 +310,13 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
     # 4. compute SIF from the observer direction (CI is accounted for in the p_sensor and p_sun_sensor already, so do NOT use CI here)
     #    TODO: may have numerical issues because of due to the same issue with SIF conservation (might not, I do not know yet)
     vec_layer = spac.cache.cache_layer_1;
+    # sunlit/shaded pool split of the diffuse-driven emission: sunlit ∧ visible = ci·pso (p_sunlit = ci·gap_s convention with the
+    # sun–view correlation of pso), shaded ∧ visible = p_sensor − ci·pso; the beam bracket (per sunlit area, ci on the source) uses pso.
+    ci_pool = sun_geo.auxil.ci_sun;
     vec_layer .= sen_geo.auxil.p_sun_sensor .* can_str.trait.δlai ./ FT(π);
     mul!(sen_geo.auxil.sif_obs_sunlit, sen_geo.auxil.sif_sunlit, vec_layer);
 
-    vec_layer .= (sen_geo.auxil.p_sensor .- sen_geo.auxil.p_sun_sensor) .* can_str.trait.δlai ./ FT(π);
+    vec_layer .= (sen_geo.auxil.p_sensor .- ci_pool .* sen_geo.auxil.p_sun_sensor) .* can_str.trait.δlai ./ FT(π);
     mul!(sen_geo.auxil.sif_obs_shaded, sen_geo.auxil.sif_shaded, vec_layer);
 
     vec_layer .= sen_geo.auxil.p_sensor .* can_str.trait.δlai .* sen_geo.auxil.ko_leaf ./ FT(π);
