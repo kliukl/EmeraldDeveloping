@@ -224,8 +224,8 @@ function sun_geometry!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT}
         mask_effective ? τ_leaf .= view(sun_geo.auxil.τ_leaf_eff,:,irt) : τ_leaf .= leaf.bio.auxil.τ_leaf;
         @. sun_geo.auxil.sdb_leaf[irt] = sun_geo.auxil.w_sdb_leaf * ρ_leaf + sun_geo.auxil.w_sdf_leaf * τ_leaf;
         @. sun_geo.auxil.sdf_leaf[irt] = sun_geo.auxil.w_sdf_leaf * ρ_leaf + sun_geo.auxil.w_sdb_leaf * τ_leaf;
-        @. sun_geo.auxil.sdb_stem[irt] = sun_geo.auxil.w_sdb_stem * SPECTRA.ρ_STEM;
-        @. sun_geo.auxil.sdf_stem[irt] = sun_geo.auxil.w_sdf_stem * SPECTRA.ρ_STEM;
+        @. sun_geo.auxil.sdb_stem[irt] = sun_geo.auxil.w_sdb_stem * can_str.trait.ρ_stem;
+        @. sun_geo.auxil.sdf_stem[irt] = sun_geo.auxil.w_sdf_stem * can_str.trait.ρ_stem;
     end;
 
     # compute the transmittance and reflectance for single directions per layer (it was 1 - k*Δx, and we used exp(-k*Δx) as Δx is not infinitesmal)

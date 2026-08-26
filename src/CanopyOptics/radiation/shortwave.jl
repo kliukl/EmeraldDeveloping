@@ -174,7 +174,7 @@ shortwave_radiation!(config::SPACConfig{FT}, spac::BulkSPAC{FT}, ::Leaf{FT}) whe
         ilf = n_layer + 1 - irt;
         leaf = leaves[ilf];
         a_leaf .= leaf.bio.auxil.α_leaf .* can_str.trait.δlai[irt];
-        a_stem .= (1 .- SPECTRA.ρ_STEM) .* can_str.trait.δsai[irt];
+        a_stem .= (1 .- can_str.trait.ρ_stem) .* can_str.trait.δsai[irt];
         f_leaf .= a_leaf ./ (a_leaf .+ a_stem);
         f_stem .= 1 .- f_leaf;
         mask_effective ? ρ_leaf .= view(can_str.auxil.ρ_leaf_eff,:,irt) : ρ_leaf .= leaf.bio.auxil.ρ_leaf;

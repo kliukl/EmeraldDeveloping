@@ -412,9 +412,9 @@ function sensor_geometry!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT}
         # combination of both (e.g. through an angular-CI-consistent joint factor) should be
         # revisited when the angular clumping (ci_1 ≠ 0) is enabled; for constant CI they coincide.
         @. sen_geo.auxil.so_leaf[:,irt]  = sun_geo.auxil.ci_sun * (sen_geo.auxil.w_sob_leaf * ρ_leaf_dir + sen_geo.auxil.w_sof_leaf * τ_leaf_dir);
-        @. sen_geo.auxil.dob_stem[:,irt] = sen_geo.auxil.w_dob_stem * SPECTRA.ρ_STEM;
-        @. sen_geo.auxil.dof_stem[:,irt] = sen_geo.auxil.w_dof_stem * SPECTRA.ρ_STEM;
-        @. sen_geo.auxil.so_stem[:,irt]  = sun_geo.auxil.ci_sun * sen_geo.auxil.w_sob_stem * SPECTRA.ρ_STEM;
+        @. sen_geo.auxil.dob_stem[:,irt] = sen_geo.auxil.w_dob_stem * can_str.trait.ρ_stem;
+        @. sen_geo.auxil.dof_stem[:,irt] = sen_geo.auxil.w_dof_stem * can_str.trait.ρ_stem;
+        @. sen_geo.auxil.so_stem[:,irt]  = sun_geo.auxil.ci_sun * sen_geo.auxil.w_sob_stem * can_str.trait.ρ_stem;
     end;
 
     return nothing

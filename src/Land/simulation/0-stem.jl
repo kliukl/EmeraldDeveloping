@@ -36,26 +36,40 @@ Compute a per-pixel broadband stem reflectance pair `(ρ_vis, ρ_nir)` from the 
 fractions in the grid dictionary, given
 - `gmd` Dictionary of GriddingMachine data in a grid
 
-The pixel value is a stem-area-weighted mean of per-PFT stem reflectance. Because
-ρ is an intensive optical property, each PFT is weighted by its relative stem area
-`w[p] = PFT_FRACTIONS[p] * SAI_LAI[p]` (the shared pixel LAI anchor cancels in the
-normalized ratio). Returns `(0.2, 0.2)` for non-vegetated grids or pixels with no
-woody/herbaceous stem area.
+The pixel value is a stem-area-weighted mean of per-PFT stem reflectance. Because ρ is an
+intensive optical property each PFT must be weighted by its actual stem area, and the two PFT
+groups do NOT share a common LAI anchor in `sai_from_pft`:
+- forest/shrub stem area is constant at `SAI_LAI[p] * P90(LAI)`, so its time mean is that value;
+- grass/crop stem area is `SAI_LAI[p] * LAI(t)`, so its time mean is `SAI_LAI[p] * mean(LAI)`.
+
+The weights below are therefore the TIME-MEAN stem area of each group, which is the correct
+static weighting for a ρ that is set once at SPAC build and not re-prescribed through the year.
+Weighting both groups by `SAI_LAI[p]` alone (no anchor) would credit grass/crop with their peak
+stem area year-round and bias ρ toward herbaceous values in the dormant season.
+
+Returns `(0.2, 0.2)` for non-vegetated grids or pixels with no woody/herbaceous stem area.
 
 """
 function stem_rho_from_pft(gmd::Union{Dict,OrderedDict})
     pfts = gmd["PFT_FRACTIONS"];
+    lai = gmd["LAI"];
 
     # guard non-vegetated / soil-stub grids (PFT_FRACTIONS not the full 17-vector)
     if length(pfts) < 17
         return (STEM_RHO_DEFAULT, STEM_RHO_DEFAULT)
     end;
 
+    # time-mean stem area anchors: constant P90(LAI) for forest/shrub, mean(LAI) for grass/crop
+    finite_lai = filter(!isnan, lai);
+    p90 = isempty(finite_lai) ? zero(eltype(lai)) : quantile(finite_lai, 0.9);
+    avg = isempty(finite_lai) ? zero(eltype(lai)) : mean(finite_lai);
+
     w_sum = 0.0;
     vis_sum = 0.0;
     nir_sum = 0.0;
     for p in 2:17
-        w = pfts[p] * SAI_LAI_BY_IDX[p];
+        anchor = p in FOREST_SHRUB_IDX ? p90 : avg;
+        w = pfts[p] * SAI_LAI_BY_IDX[p] * anchor;
         w_sum += w;
         vis_sum += w * STEM_RHO_VIS_BY_IDX[p];
         nir_sum += w * STEM_RHO_NIR_BY_IDX[p];

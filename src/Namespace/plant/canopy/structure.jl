@@ -40,6 +40,10 @@ Base.@kwdef mutable struct CanopyStructureTrait{FT}
     sai::FT
     "Stem area index distribution"
     δsai::Vector{FT}
+    "Stem reflectance spectrum `[-]` (per-pixel: PFT-weighted VIS/NIR pair expanded over Λ).
+    Lives on the canopy, not on `config.CONSTANTS.SPECTRA`, because it is per-pixel state:
+    a config-owned vector is shared by every SPAC built from that config."
+    ρ_stem::Vector{FT}
 
     # Clumping index of the canopy
     "Clumping index"
@@ -241,7 +245,8 @@ CanopyStructure(config::SPACConfig{FT}, n_layer::Int) where {FT} = (
     sai = 0.5;
     δsai = 0.5 .* ones(FT, n_layer) ./ n_layer;
 
-    trait = CanopyStructureTrait{FT}(lai = lai, δlai = δlai, sai = sai, δsai = δsai);
+    trait = CanopyStructureTrait{FT}(lai = lai, δlai = δlai, sai = sai, δsai = δsai,
+                                     ρ_stem = zeros(FT, length(config.CONSTANTS.SPECTRA.Λ)) .+ 0.2);
     auxil = CanopyStructureAuxil(config, n_layer);
     auxil.x_bnds .= ([0; [sum(δlai[1:i]) + sum(δsai[1:i]) for i in 1:n_layer]] ./ -(lai + sai));
     auxil.p_incl_leaf = ones(FT, config.DIMENSIONS.DIM_INCL) ./ config.DIMENSIONS.DIM_INCL;

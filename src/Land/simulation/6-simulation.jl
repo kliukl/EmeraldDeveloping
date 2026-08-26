@@ -22,8 +22,8 @@ simulation!(settings::Union{Dict,OrderedDict}, gmd::Union{Dict,OrderedDict}; c3c
     wd = grid_weather(WeatherDriverLabels(settings["WD_VERSION"], gmd["YEAR"]), gmd["LATITUDE"], gmd["LONGITUDE"]);
     sd = parameters_to_save(settings["VARIABLES_TO_SAVE"]);
     config = site_config(settings);
-    spac = site_spac(config, gmd; c3c4 = c3c4, lai_layer_strategy = settings["MAX_LAI_LAYERING"]);
-    driver = site_driver_tuple(gmd, wd);
+    spac = site_spac(config, gmd; c3c4 = c3c4, canopy_layers = settings["MAX_LAI_LAYERING"] ? :pai : 10);
+    driver = site_driver_tuple(gmd, wd; enable_sai = config.FEATURES.ENABLE_SAI);
     results = site_result_tuple(spac, wd, sd);
 
     return simulation!(config, spac, driver, results, sd; saving = saving, selection = settings["SIMULATION_PERIOD"], δt = settings["TIME_STEP"]);

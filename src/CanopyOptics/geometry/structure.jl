@@ -198,8 +198,8 @@ function canopy_structure!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) where {FT
         mask_effective ? τ_leaf .= view(can_str.auxil.τ_leaf_eff,:,irt) : τ_leaf .= leaf.bio.auxil.τ_leaf;
         can_str.auxil.ddb_leaf[:,irt] .= can_str.auxil.w_ddb_leaf .* ρ_leaf .+ can_str.auxil.w_ddf_leaf .* τ_leaf;
         can_str.auxil.ddf_leaf[:,irt] .= can_str.auxil.w_ddf_leaf .* ρ_leaf .+ can_str.auxil.w_ddb_leaf .* τ_leaf;
-        can_str.auxil.ddb_stem[:,irt] .= can_str.auxil.w_ddb_stem .* SPECTRA.ρ_STEM;
-        can_str.auxil.ddf_stem[:,irt] .= can_str.auxil.w_ddf_stem .* SPECTRA.ρ_STEM;
+        can_str.auxil.ddb_stem[:,irt] .= can_str.auxil.w_ddb_stem .* can_str.trait.ρ_stem;
+        can_str.auxil.ddf_stem[:,irt] .= can_str.auxil.w_ddf_stem .* can_str.trait.ρ_stem;
     end;
 
     # compute the transmittance and reflectance for single directions per layer (it was 1 - k*Δx, and we used exp(-k*Δx) as Δx is not infinitesmal)

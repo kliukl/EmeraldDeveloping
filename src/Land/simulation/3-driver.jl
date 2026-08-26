@@ -1,20 +1,23 @@
 """
 
-    site_driver_tuple(gmd::Union{Dict,OrderedDict}, wd::Union{Dict{String,Vector{FT}},OrderedDict{String,Vector{FT}}}) where {FT}
+    site_driver_tuple(gmd::Union{Dict,OrderedDict}, wd::Union{Dict{String,Vector{FT}},OrderedDict{String,Vector{FT}}}; enable_sai::Bool = true) where {FT}
 
 Prepare the Tuple of weather and trait drivers to drive the simulations, given
 - `gmd` Dictionary of GriddingMachine data in a grid
 - `wd` Dictionary of weather driver data in a grid
+- `enable_sai` Whether SAI is used by the run. When false the SAI field is filled with zeros instead of
+  calling `grid_sai` (which requires `gmd["PFT_FRACTIONS"]`); the field is still created so that
+  `driver.SAI` always exists (default: true)
 
 """
-function site_driver_tuple(gmd::Union{Dict,OrderedDict}, wd::Union{Dict{String,Vector{FT}},OrderedDict{String,Vector{FT}}}) where {FT}
+function site_driver_tuple(gmd::Union{Dict,OrderedDict}, wd::Union{Dict{String,Vector{FT}},OrderedDict{String,Vector{FT}}}; enable_sai::Bool = true) where {FT}
     wd["B6F"    ] = resample(FT.(gmd["B6F"        ]), "1H", gmd["YEAR"]);
     wd["CO2"    ] = resample(FT.(gmd["CO2"        ]), "1H", gmd["YEAR"]);
     wd["CHL"    ] = resample(FT.(gmd["CHLOROPHYLL"]), "1H", gmd["YEAR"]);
     wd["CI"     ] = resample(FT.(gmd["CLUMPING"   ]), "1H", gmd["YEAR"]);
     wd["JMAX25" ] = resample(FT.(gmd["JMAX25"     ]), "1H", gmd["YEAR"]);
     wd["LAI"    ] = resample(FT.(gmd["LAI"        ]), "1H", gmd["YEAR"]);
-    wd["SAI"    ] = resample(FT.(grid_sai(gmd)      ), "1H", gmd["YEAR"]);
+    wd["SAI"    ] = enable_sai ? resample(FT.(grid_sai(gmd)), "1H", gmd["YEAR"]) : zeros(FT, length(wd["LAI"]));
     wd["VCMAX25"] = resample(FT.(gmd["VCMAX25"    ]), "1H", gmd["YEAR"]);
 
     # convert the DataFrame to NamedTuple

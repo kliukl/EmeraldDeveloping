@@ -1,28 +1,31 @@
 """
 
-    site_spac(config::SPACConfig{FT}, gmd::Union{Dict,OrderedDict}; lai_layer_strategy::Bool = false) where {FT}
+    site_spac(config::SPACConfig{FT}, gmd::Union{Dict,OrderedDict}; canopy_layers::Union{Int,Symbol} = 10) where {FT}
 
 Create a un-initialized SPAC using the data from a grid (CHL, VCMAX25, LAI, and CI are not prescribed as these changes with time), given
 - `config` Configurations for SPAC
 - `gmd` Dictionary of GriddingMachine data in a grid
 - `c3c4` String to specify whether the leaf is C3 or C4, default to "C3"
-- `lai_layer_strategy` Whether to use LAI-based air layer strategy (at least 10 layers, more for dense canopies; default: false)
-- `maxlai_nlayer` Whether to scale canopy resolution with MAX_LAI via `n_layer = max(10, ceil(MAX_LAI)*10)` — i.e. a minimum of 10 layers for MAX_LAI < 1, and `ceil(MAX_LAI)*10` layers otherwise (10, 20, 30, ...; default: false). Takes precedence over `lai_layer_strategy` when both are true.
+- `canopy_layers` Vertical resolution, counted as LAYERS THAT CONTAIN LAI. Either an `Int` (a fixed count
+  for every pixel; 10 reproduces the historical default) or `:pai` (`max(10, ceil(10 * max(LAI+SAI)))`,
+  i.e. 10 layers per unit peak plant area index). With `ENABLE_SAI = false` the SAI term is zero, so
+  `:pai` reduces to `10 * max(LAI)`. Anything else raises an error rather than silently falling back.
+  NOTE leaves occupy only `zc/2..zc` (`plant_zs` below), so the air bounds use `2*n_leaf` steps over
+  `0..zc` in order to yield `n_leaf` leaf layers.
 
 """
-function site_spac(config::SPACConfig{FT}, gmd::Union{Dict,OrderedDict}; c3c4::String = "C3", lai_layer_strategy::Bool = false, maxlai_nlayer::Bool = false) where {FT}
+function site_spac(config::SPACConfig{FT}, gmd::Union{Dict,OrderedDict}; c3c4::String = "C3", canopy_layers::Union{Int,Symbol} = 10) where {FT}
     # compute air layer bounds based on maximum LAI
     zc = max(FT(0.05), gmd["CANOPY_HEIGHT"]);
-    air_bounds = if maxlai_nlayer
-        # minimum 10 layers (MAX_LAI < 1); otherwise ceil(MAX_LAI)*10 layers
-        n_layer = max(10, Int(ceil(maximum(gmd["LAI"]))) * 10);
-        collect(0:(2n_layer+2)) * zc / (2n_layer)
-    elseif lai_layer_strategy
-        n_layer = max(10, Int(ceil(maximum(gmd["LAI"]) * 10)));
-        collect(0:(2n_layer+2)) * zc / (2n_layer)
+    sai_for_layers = config.FEATURES.ENABLE_SAI ? grid_sai(gmd) : zero(gmd["LAI"]);
+    n_leaf = if canopy_layers isa Integer
+        canopy_layers
+    elseif canopy_layers === :pai
+        max(10, ceil(Int, 10 * nanmax(gmd["LAI"] .+ sai_for_layers)))
     else
-        collect(0:21) * zc / 20
+        error("site_spac: unknown canopy_layers = $(canopy_layers); use an Int or :pai");
     end;
+    air_bounds = collect(0:(2n_leaf+2)) * zc / (2n_leaf);
 
     spac = BulkSPAC(
                 config;
@@ -52,8 +55,9 @@ function site_spac(config::SPACConfig{FT}, gmd::Union{Dict,OrderedDict}; c3c4::S
     if config.FEATURES.ENABLE_SAI
         rho_vis, rho_nir = grid_stem_rho(gmd);
         spectra = config.CONSTANTS.SPECTRA;
+        rho_stem = spac.canopy.structure.trait.ρ_stem;
         for i in eachindex(spectra.Λ)
-            spectra.ρ_STEM[i] = spectra.Λ[i] < 700 ? FT(rho_vis) : FT(rho_nir);
+            rho_stem[i] = spectra.Λ[i] < 700 ? FT(rho_vis) : FT(rho_nir);
         end;
     end;
 

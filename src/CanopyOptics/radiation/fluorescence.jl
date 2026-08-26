@@ -108,7 +108,7 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         ilf = n_layer + 1 - irt;
         leaf = leaves[ilf];
         a_leaf .= view(leaf.bio.auxil.α_leaf,SPECTRA.IΛ_SIFE) .* can_str.trait.δlai[irt];
-        a_stem .= (1 .- view(SPECTRA.ρ_STEM,SPECTRA.IΛ_SIFE)) .* can_str.trait.δsai[irt];
+        a_stem .= (1 .- view(can_str.trait.ρ_stem,SPECTRA.IΛ_SIFE)) .* can_str.trait.δsai[irt];
         f_leaf .= a_leaf ./ (a_leaf .+ a_stem);
 
         # compute the energy used for SIF excitation
@@ -154,7 +154,7 @@ function fluorescence_spectrum!(config::SPACConfig{FT}, spac::BulkSPAC{FT}) wher
         ilf = n_layer + 1 - irt;
         leaf = leaves[ilf];
         a_leaf .= view(leaf.bio.auxil.α_leaf,SPECTRA.IΛ_SIFE) .* can_str.trait.δlai[irt];
-        a_stem .= (1 .- view(SPECTRA.ρ_STEM,SPECTRA.IΛ_SIFE)) .* can_str.trait.δsai[irt];
+        a_stem .= (1 .- view(can_str.trait.ρ_stem,SPECTRA.IΛ_SIFE)) .* can_str.trait.δsai[irt];
         f_leaf .= a_leaf ./ (a_leaf .+ a_stem);
 
         # compute the energy used for SIF excitation
